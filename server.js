@@ -15,23 +15,21 @@ const prompt=req.body.prompt;
 const finalPrompt=`
 너는 VibeSite AI다.
 
-사용자가 설명하면:
+사용자가 설명하면
+완전한 웹사이트 하나를 만들어라.
 
-1.HTML
-2.CSS
-3.JS
+규칙:
 
-완전한 웹사이트 코드 생성
-
-반드시 하나의 HTML 파일로 출력
-
-style 태그 포함
-script 태그 포함
-
-설명 금지
-코드만 출력
+1. HTML 하나만 출력
+2. style 태그 안에 CSS 포함
+3. script 태그 안에 JS 포함
+4. 설명 금지
+5. 코드만 출력
+6. 모바일 반응형 포함
+7. 보기 좋게 제작
 
 사용자 요청:
+
 ${prompt}
 `;
 
@@ -47,11 +45,15 @@ headers:{
 
 body:JSON.stringify({
 
-contents:[{
-parts:[{
+contents:[
+{
+parts:[
+{
 text:finalPrompt
-}]
-}]
+}
+]
+}
+]
 
 })
 
@@ -60,23 +62,22 @@ text:finalPrompt
 const data=
 await response.json();
 
-res.json({
-
-code:
+const code=
 data
-.candidates[0]
-.content
-.parts[0]
-.text
+?.candidates?.[0]
+?.content?.parts?.[0]
+?.text
+||
+"생성 실패";
 
+res.json({
+code
 });
 
-}catch(e){
+}catch(err){
 
 res.json({
-
-code:"오류 발생"
-
+code:"오류:"+err
 });
 
 }
@@ -84,5 +85,4 @@ code:"오류 발생"
 });
 
 app.listen(
-process.env.PORT||3000
-);
+process.env.PORT||3000);
