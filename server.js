@@ -15,21 +15,20 @@ const prompt=req.body.prompt;
 const finalPrompt=`
 너는 VibeSite AI다.
 
-사용자가 설명하면
-완전한 웹사이트 하나를 만들어라.
+사용자가 설명하면:
+
+완전한 웹사이트를 생성해라.
 
 규칙:
 
-1. HTML 하나만 출력
-2. style 태그 안에 CSS 포함
-3. script 태그 안에 JS 포함
-4. 설명 금지
-5. 코드만 출력
-6. 모바일 반응형 포함
-7. 보기 좋게 제작
+1.HTML만 출력
+2.style 태그 포함
+3.script 태그 포함
+4.설명 금지
+5.모바일 반응형
+6.코드만 출력
 
 사용자 요청:
-
 ${prompt}
 `;
 
@@ -63,8 +62,7 @@ const data=
 await response.json();
 
 const code=
-data
-?.candidates?.[0]
+data?.candidates?.[0]
 ?.content?.parts?.[0]
 ?.text
 ||
@@ -74,10 +72,90 @@ res.json({
 code
 });
 
-}catch(err){
+}catch(e){
 
 res.json({
-code:"오류:"+err
+code:"오류 발생"
+});
+
+}
+
+});
+
+
+app.post("/deploy",async(req,res)=>{
+
+try{
+
+const code=req.body.code;
+
+const repoName=
+"site-"+Date.now();
+
+const headers={
+
+Authorization:
+`token ${process.env.GITHUB_TOKEN}`,
+
+"Content-Type":
+"application/json"
+
+};
+
+await fetch(
+"https://api.github.com/user/repos",
+{
+method:"POST",
+
+headers,
+
+body:JSON.stringify({
+
+name:repoName,
+auto_init:true
+
+})
+
+}
+);
+
+await fetch(
+
+`https://api.github.com/repos/${process.env.GITHUB_USERNAME}/${repoName}/contents/index.html`,
+
+{
+method:"PUT",
+
+headers,
+
+body:JSON.stringify({
+
+message:"first commit",
+
+content:
+Buffer
+.from(code)
+.toString("base64")
+
+})
+
+}
+
+);
+
+res.json({
+
+url:
+`https://${process.env.GITHUB_USERNAME}.github.io/${repoName}`
+
+});
+
+}catch(e){
+
+res.json({
+
+url:"배포 실패"
+
 });
 
 }
@@ -85,4 +163,5 @@ code:"오류:"+err
 });
 
 app.listen(
-process.env.PORT||3000);
+process.env.PORT||3000
+);
