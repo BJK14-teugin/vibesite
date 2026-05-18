@@ -1,7 +1,3 @@
-const fetch = (...args)=>
-import("node-fetch")
-.then(({default:fetch})=>fetch(...args));
-
 const express = require("express");
 const app = express();
 
@@ -79,86 +75,52 @@ ${prompt}
 `;
 
 const response = await fetch(
-
 `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-
 {
 method:"POST",
-
 headers:{
-"Content-Type":
-"application/json"
+"Content-Type":"application/json"
 },
-
 body:JSON.stringify({
-
 contents:[{
-
 parts:[{
-
 text:finalPrompt
-
 }]
-
 }]
-
 })
-
 }
-
 );
 
-const data=
+const data =
 await response.json();
 
-
 let code =
-
 data?.candidates?.[0]
 ?.content?.parts?.[0]
 ?.text
-
 ||
-
 "<h1>생성 실패</h1>";
 
-
-
-/* =========================
-   자동 ping 삽입
-========================= */
+/* 자동 ping 삽입 */
 
 code += `
 
 <script>
-
 fetch("/ping",{
-
 method:"POST",
-
 headers:{
-"Content-Type":
-"application/json"
+"Content-Type":"application/json"
 },
-
 body:JSON.stringify({
-
-site:
-location.pathname
-
+site:location.pathname
 })
-
 }).catch(()=>{});
-
 </script>
 
 `;
 
-
 res.json({
-
 code
-
 });
 
 }catch(e){
@@ -169,12 +131,10 @@ e
 );
 
 res.json({
-
 code:
 "AI 오류:"
 +
 String(e)
-
 });
 
 }
@@ -198,7 +158,6 @@ const repoName =
 +
 Date.now();
 
-
 const headers={
 
 Authorization:
@@ -213,56 +172,35 @@ Authorization:
 /* repo 생성 */
 
 await fetch(
-
 "https://api.github.com/user/repos",
-
 {
-
 method:"POST",
-
 headers,
-
 body:JSON.stringify({
-
 name:repoName,
-
 auto_init:true
-
 })
-
 }
-
 );
 
 
 /* html 업로드 */
 
 await fetch(
-
 `https://api.github.com/repos/${process.env.GITHUB_USERNAME}/${repoName}/contents/index.html`,
-
 {
-
 method:"PUT",
-
 headers,
-
 body:JSON.stringify({
-
-message:
-"auto deploy",
-
+message:"auto deploy",
 content:
 Buffer
 .from(code)
 .toString(
 "base64"
 )
-
 })
-
 }
-
 );
 
 
@@ -271,29 +209,17 @@ Buffer
 try{
 
 await fetch(
-
 `https://api.github.com/repos/${process.env.GITHUB_USERNAME}/${repoName}/pages`,
-
 {
-
 method:"POST",
-
 headers,
-
 body:JSON.stringify({
-
 source:{
-
 branch:"main",
-
 path:"/"
-
 }
-
 })
-
 }
-
 );
 
 }catch(e){}
@@ -345,23 +271,16 @@ lastSeen
 ){
 
 if(
-
 Date.now()
 -
 lastSeen[site]
-
 >
-
 THREE_DAYS
-
 ){
 
 console.log(
-
 site+
-
 " 삭제대상"
-
 );
 
 }
@@ -377,9 +296,7 @@ site+
 ========================= */
 
 app.listen(
-
 process.env.PORT||3000,
-
 ()=>{
 
 console.log(
