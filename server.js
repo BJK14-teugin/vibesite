@@ -19,13 +19,11 @@ app.post("/ping",(req,res)=>{
 
 try{
 
-const site =
-req.body.site;
+const site=req.body.site;
 
 if(site){
 
-lastSeen[site] =
-Date.now();
+lastSeen[site]=Date.now();
 
 console.log(
 "접속:",
@@ -53,13 +51,14 @@ ok:false
    AI 생성
 ========================= */
 
-app.post("/generate", async (req, res) => {
+app.post("/generate", async(req,res)=>{
 
-try {
+try{
 
-const prompt = req.body.prompt;
+const prompt=req.body.prompt;
 
-const finalPrompt = `
+const finalPrompt=`
+
 너는 VibeSites AI다.
 
 완전한 HTML 웹사이트를 생성해라.
@@ -72,36 +71,51 @@ const finalPrompt = `
 
 요청:
 ${prompt}
+
 `;
 
-const response = await fetch(
+const response=
+await fetch(
+
 `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+
 {
 method:"POST",
+
 headers:{
 "Content-Type":"application/json"
 },
+
 body:JSON.stringify({
+
 contents:[{
+
 parts:[{
+
 text:finalPrompt
+
 }]
+
 }]
+
 })
+
 }
+
 );
 
-const data =
+const data=
 await response.json();
 
-let code =
+let code=
+
 data?.candidates?.[0]
 ?.content?.parts?.[0]
 ?.text
-||
-"<h1>생성 실패</h1>";
 
-/* 자동 ping 삽입 */
+||
+
+"<h1>생성 실패</h1>";
 
 code += `
 
@@ -114,7 +128,7 @@ headers:{
 body:JSON.stringify({
 site:location.pathname
 })
-}).catch(()=>{});
+}).catch(()=>{})
 </script>
 
 `;
@@ -131,10 +145,12 @@ e
 );
 
 res.json({
+
 code:
-"AI 오류:"
+"AI 오류: "
 +
 String(e)
+
 });
 
 }
@@ -150,13 +166,7 @@ app.post("/deploy",async(req,res)=>{
 
 try{
 
-const code =
-req.body.code;
-
-const repoName =
-"vibesites-"
-+
-Date.now();
+const code=req.body.code;
 
 const headers={
 
@@ -169,7 +179,129 @@ Authorization:
 };
 
 
-/* repo 생성 */
+/* =========================
+   AI 사이트 이름 생성
+========================= */
+
+const titlePrompt=`
+
+사이트 이름 생성
+
+규칙:
+- 영어
+- 소문자
+- 짧게
+- 하이픈 사용 가능
+- 설명 금지
+
+사이트 내용:
+
+${code.substring(0,300)}
+
+`;
+
+const titleResponse=
+await fetch(
+
+`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+
+{
+method:"POST",
+
+headers:{
+"Content-Type":"application/json"
+},
+
+body:JSON.stringify({
+
+contents:[{
+
+parts:[{
+
+text:titlePrompt
+
+}]
+
+}]
+
+})
+
+}
+
+);
+
+const titleData=
+await titleResponse.json();
+
+
+let siteName=
+
+titleData?.candidates?.[0]
+?.content?.parts?.[0]
+?.text
+
+?.trim()
+.toLowerCase()
+.replace(/\s/g,"-")
+.replace(/[^a-z0-9-]/g,"");
+
+
+if(!siteName){
+
+siteName="site";
+
+}
+
+
+/* =========================
+   중복 확인
+========================= */
+
+let repoName=
+"vibesites-"+
+siteName;
+
+
+const repoCheck=
+await fetch(
+"https://api.github.com/user/repos",
+{
+headers
+}
+);
+
+const repoList=
+await repoCheck.json();
+
+
+let count=1;
+
+while(
+
+repoList.some(
+r=>
+r.name===repoName
+)
+
+){
+
+repoName=
+"vibesites-"
++
+siteName
++
+"-"
++
+count;
+
+count++;
+
+}
+
+
+/* =========================
+   repo 생성
+========================= */
 
 await fetch(
 "https://api.github.com/user/repos",
@@ -184,7 +316,9 @@ auto_init:true
 );
 
 
-/* html 업로드 */
+/* =========================
+   html 업로드
+========================= */
 
 await fetch(
 `https://api.github.com/repos/${process.env.GITHUB_USERNAME}/${repoName}/contents/index.html`,
@@ -204,28 +338,43 @@ Buffer
 );
 
 
-/* pages */
+/* =========================
+   pages
+========================= */
 
 try{
 
 await fetch(
+
 `https://api.github.com/repos/${process.env.GITHUB_USERNAME}/${repoName}/pages`,
+
 {
 method:"POST",
+
 headers,
+
 body:JSON.stringify({
+
 source:{
+
 branch:"main",
+
 path:"/"
+
 }
+
 })
+
 }
+
 );
 
 }catch(e){}
 
 
-/* 완료 */
+/* =========================
+   완료
+========================= */
 
 res.json({
 
@@ -244,7 +393,7 @@ e
 res.json({
 
 url:
-"배포실패:"
+"배포실패: "
 +
 String(e)
 
