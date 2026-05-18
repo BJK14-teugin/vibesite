@@ -1,97 +1,107 @@
-async function sendPrompt(){
+/* =========================
+   GitHub 배포
+========================= */
+app.post("/deploy", async (req, res) => {
 
-const input =
-document
-.getElementById("prompt")
-.value
-.trim();
+try {
 
-if(!input)return;
+const code = req.body.code;
 
+/* 1️⃣ Gemini가 사이트 이름 생성 */
+const namePrompt = `
+웹사이트 이름 하나 만들어줘.
 
-/* 관리자 */
+규칙:
+- 영어 소문자
+- 짧게 (2~3단어)
+- 공백 없이 하이픈 사용
+- 예: neon-clicker, dark-game, pixel-world
+`;
 
-if(input==="/관리자"){
-
-const pw=
-prompt("관리자 비밀번호");
-
-if(!pw)return;
-
-const res=
-await fetch(
-"/admin-login",
+const nameRes = await fetch(
+`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
 {
-method:"POST",
-headers:{
-"Content-Type":"application/json"
-},
-body:JSON.stringify({
-password:pw
+method: "POST",
+headers: { "Content-Type": "application/json" },
+body: JSON.stringify({
+contents: [{ parts: [{ text: namePrompt }] }]
 })
 }
 );
 
-const data=
-await res.json();
+let siteName =
+nameRes?.candidates?.[0]?.content?.parts?.[0]?.text
+?.trim()
+?.replace(/\s/g, "-")
+?.toLowerCase();
 
-if(data.ok){
+/* 안전장치 */
+if (!siteName) siteName = "site";
 
-location.href=
-"/admin.html";
+/* 2️⃣ repo 이름 생성 */
+const repoName =
+"vibesites-" + siteName + "-" + Date.now();
 
-}else{
+const headers = {
+Authorization: `token ${process.env.GITHUB_TOKEN}`,
+"Content-Type": "application/json"
+};
 
-alert(
-"비밀번호 틀림"
-);
+/* 3️⃣ repo 생성 */
+await fetch("https://api.github.com/user/repos", {
+method: "POST",
+headers,
+body: JSON.stringify({
+name: repoName,
+auto_init: true
+})
+});
 
-}
-
-return;
-
-}
-
-
-/* 일반 생성 */
-
-document
-.getElementById(
-"result"
-)
-.innerText=
-"생성중...";
-
-
-const res=
+/* 4️⃣ index.html 업로드 */
 await fetch(
-"/deploy",
+`https://api.github.com/repos/${process.env.GITHUB_USERNAME}/${repoName}/contents/index.html`,
 {
-method:"POST",
-headers:{
-"Content-Type":
-"application/json"
-},
-body:
-JSON.stringify({
-prompt:input
+method: "PUT",
+headers,
+body: JSON.stringify({
+message: "auto deploy",
+content: Buffer.from(code).toString("base64")
 })
 }
 );
 
-const data=
-await res.json();
+/* 5️⃣ Pages 활성화 (무시 가능) */
+try {
+await fetch(
+`https://api.github.com/repos/${process.env.GITHUB_USERNAME}/${repoName}/pages`,
+{
+method: "POST",
+headers,
+body: JSON.stringify({
+source: {
+branch: "main",
+path: "/"
+}
+})
+}
+);
+} catch (e) {}
 
-document
-.getElementById(
-"result"
-)
-.innerText=
+const url =
+`https://${process.env.GITHUB_USERNAME}.github.io/${repoName}`;
 
-data.url
-||
-data.error
-||
-"오류발생";
+res.json({
+name: siteName,
+repo: repoName,
+url: url
+});
+
+} catch (e) {
+
+res.json({
+error: e.message
+});
 
 }
+
+});
