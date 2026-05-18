@@ -356,6 +356,16 @@ generate();
 });
 
 </script>
-
+<script>
+fetch("/ping",{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+site:location.pathname
+})
+}).catch(()=>{});
+</script>
 </body>
 </html>
