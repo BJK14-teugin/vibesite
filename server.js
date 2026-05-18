@@ -1,3 +1,58 @@
+const express = require("express");
+const app = express();
+
+app.use(express.json());
+app.use(express.static("./"));
+
+/* =========================
+   AI 생성 (Gemini)
+========================= */
+app.post("/generate", async (req, res) => {
+
+try {
+
+const prompt = req.body.prompt;
+
+const finalPrompt = `
+너는 VibeSites AI다.
+완전한 HTML 웹사이트를 생성해라.
+
+규칙:
+- HTML만 출력
+- style + script 포함
+- 설명 금지
+- 모바일 대응
+
+요청:
+${prompt}
+`;
+
+const response = await fetch(
+`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+{
+method: "POST",
+headers: { "Content-Type": "application/json" },
+body: JSON.stringify({
+contents: [{ parts: [{ text: finalPrompt }] }]
+})
+}
+);
+
+const data = await response.json();
+
+const code =
+data?.candidates?.[0]?.content?.parts?.[0]?.text
+|| "생성 실패";
+
+res.json({ code });
+
+} catch (e) {
+res.json({ code: "AI 오류: " + (e?.message || e) });
+}
+
+});
+
+
 /* =========================
    GitHub 배포
 ========================= */
@@ -7,57 +62,27 @@ try {
 
 const code = req.body.code;
 
-/* 1️⃣ Gemini가 사이트 이름 생성 */
-const namePrompt = `
-웹사이트 이름 하나 만들어줘.
-
-규칙:
-- 영어 소문자
-- 짧게 (2~3단어)
-- 공백 없이 하이픈 사용
-- 예: neon-clicker, dark-game, pixel-world
-`;
-
-const nameRes = await fetch(
-`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-{
-method: "POST",
-headers: { "Content-Type": "application/json" },
-body: JSON.stringify({
-contents: [{ parts: [{ text: namePrompt }] }]
-})
-}
-);
-
-let siteName =
-nameRes?.candidates?.[0]?.content?.parts?.[0]?.text
-?.trim()
-?.replace(/\s/g, "-")
-?.toLowerCase();
-
-/* 안전장치 */
-if (!siteName) siteName = "site";
-
-/* 2️⃣ repo 이름 생성 */
-const repoName =
-"vibesites-" + siteName + "-" + Date.now();
+const repoName = "vibesites-" + Date.now();
 
 const headers = {
 Authorization: `token ${process.env.GITHUB_TOKEN}`,
 "Content-Type": "application/json"
 };
 
-/* 3️⃣ repo 생성 */
-await fetch("https://api.github.com/user/repos", {
+/* 1. repo 생성 */
+await fetch(
+"https://api.github.com/user/repos",
+{
 method: "POST",
 headers,
 body: JSON.stringify({
 name: repoName,
 auto_init: true
 })
-});
+}
+);
 
-/* 4️⃣ index.html 업로드 */
+/* 2. index.html 업로드 */
 await fetch(
 `https://api.github.com/repos/${process.env.GITHUB_USERNAME}/${repoName}/contents/index.html`,
 {
@@ -70,7 +95,7 @@ content: Buffer.from(code).toString("base64")
 }
 );
 
-/* 5️⃣ Pages 활성화 (무시 가능) */
+/* 3. Pages 활성화 (무시 가능) */
 try {
 await fetch(
 `https://api.github.com/repos/${process.env.GITHUB_USERNAME}/${repoName}/pages`,
@@ -87,21 +112,22 @@ path: "/"
 );
 } catch (e) {}
 
-const url =
-`https://${process.env.GITHUB_USERNAME}.github.io/${repoName}`;
-
 res.json({
-name: siteName,
-repo: repoName,
-url: url
+url: `https://${process.env.GITHUB_USERNAME}.github.io/${repoName}`
 });
 
 } catch (e) {
 
 res.json({
-error: e.message
+url: "배포 실패: " + (e?.message || e)
 });
 
 }
 
 });
+
+
+/* =========================
+   서버 실행
+========================= */
+app.listen(process.env.PORT || 3000);
